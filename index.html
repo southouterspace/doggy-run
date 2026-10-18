@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doggy Run</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+  /* Layout: one letterboxed arcade screen on a night-navy field; menus float as pixel panels over the live scene */
+  :root {
+    --field: #0b0e22;
+    --panel: #161b3d;
+    --edge: #fcfcfc;
+    --text: #fcfcfc;
+    --muted: #a8b4e8;
+    --gold: #f8b800;
+    --brick: #c84c0c;
+    --sky: #5c94fc;
+    --scrim: rgba(8, 10, 28, 0.72);
+    --press: rgba(0, 0, 0, 0.35);
+    --pixel: "Press Start 2P", ui-monospace, "Courier New", monospace;
+    --crt: "VT323", ui-monospace, "Courier New", monospace;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  html { box-sizing: border-box; height: 100%; }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--field);
+    color: var(--text);
+    font-family: var(--crt);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #app {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 8px;
+    touch-action: none;
+  }
+  #stage { position: relative; max-width: 100%; }
+  #game {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  .tools {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    display: flex;
+    gap: 6px;
+  }
+  .tool {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: var(--scrim);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: inset 0 0 0 2px var(--edge);
+  }
+  .tool svg { width: 16px; height: 16px; fill: currentColor; }
+  .tool:focus-visible, .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    overflow-y: auto;
+    display: grid;
+    place-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+    background: var(--scrim);
+    touch-action: manipulation;
+  }
+  .panel {
+    width: min(100%, 780px);
+    display: grid;
+    gap: 18px;
+    justify-items: center;
+    text-align: center;
+  }
+  .panel.narrow { width: min(100%, 420px); }
+  h1, h2 {
+    margin: 0;
+    font-family: var(--pixel);
+    font-weight: 400;
+    color: var(--gold);
+    text-shadow: 4px 4px 0 var(--brick);
+    letter-spacing: 2px;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(26px, 7vw, 52px); }
+  h2 { font-size: clamp(20px, 5vw, 32px); }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--pixel);
+    font-size: 11px;
+    letter-spacing: 2px;
+    line-height: 1.6;
+  }
+  .dogs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  @media (max-width: 640px) {
+    .dogs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .dog-card {
+    min-width: 0;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    align-content: start;
+    padding: 10px 8px 12px;
+    border: 0;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 3px var(--edge);
+    transition: transform 120ms steps(2), box-shadow 120ms steps(2);
+  }
+  .dog-card:hover, .dog-card:focus-visible {
+    outline: none;
+    transform: translateY(-3px);
+    box-shadow: inset 0 0 0 3px var(--gold), 0 3px 0 var(--brick);
+  }
+  .dog-card canvas {
+    width: 100%;
+    max-width: 140px;
+    aspect-ratio: 4 / 3;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  .dog-card .name {
+    font-family: var(--pixel);
+    font-size: 10px;
+    line-height: 1.6;
+    text-wrap: balance;
+  }
+  .dog-card .key {
+    font-family: var(--pixel);
+    font-size: 8px;
+    color: var(--gold);
+  }
+  .dog-card .tag {
+    font-size: 19px;
+    line-height: 1.05;
+    color: var(--muted);
+  }
+  .hint {
+    margin: 0;
+    max-width: 56ch;
+    font-size: 21px;
+    line-height: 1.15;
+    color: var(--muted);
+    text-wrap: balance;
+  }
+  kbd {
+    font-family: var(--pixel);
+    font-size: 9px;
+    padding: 2px 5px;
+    color: var(--text);
+    box-shadow: inset 0 0 0 2px var(--muted);
+  }
+  .why { margin: 0; font-size: 24px; line-height: 1.1; }
+  .stats {
+    margin: 0;
+    width: 100%;
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    background: var(--panel);
+    box-shadow: inset 0 0 0 3px var(--edge);
+  }
+  .stats div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .stats dt { font-family: var(--pixel); font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .stats dd { margin: 0; font-family: var(--pixel); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .stats .new { color: var(--gold); }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    padding: 13px 16px 12px;
+    border: 0;
+    background: var(--brick);
+    color: var(--text);
+    font-family: var(--pixel);
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: inset -3px -3px 0 var(--press);
+  }
+  .btn.alt { background: var(--panel); box-shadow: inset 0 0 0 3px var(--edge); }
+  .btn:active { box-shadow: inset 3px 3px 0 var(--press); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    .dog-card { transition: none; }
+    .dog-card:hover, .dog-card:focus-visible { transform: none; }
+  }
+</style>
+</head>
+<body>
+<main id="app">
+  <div id="stage">
+    <canvas id="game" width="384" height="216" aria-label="Doggy Run game screen"></canvas>
+    <div class="tools">
+      <button class="tool" id="btnPause" type="button" aria-label="Pause">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="4" height="12"/><rect x="9" y="2" width="4" height="12"/></svg>
+      </button>
+      <button class="tool" id="btnSound" type="button" aria-label="Mute sound">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path id="soundIcon" d="M1 5h3l4-4v14l-4-4H1zM10 4h2v8h-2zM13 2h2v12h-2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <section id="select" class="overlay" aria-labelledby="titleHead">
+    <div class="panel">
+      <h1 id="titleHead">DOGGY RUN</h1>
+      <p class="eyebrow">CHOOSE YOUR DOG</p>
+      <div class="dogs" id="dogs"></div>
+      <p class="hint">Tap the screen or press <kbd>SPACE</kbd> to jump. Clear hydrants, crates, pipes and holes. Hop onto floating bricks to climb for bones. Every flag starts a faster level.</p>
+    </div>
+  </section>
+
+  <section id="over" class="overlay" hidden aria-live="polite" aria-labelledby="overHead">
+    <div class="panel narrow">
+      <h2 id="overHead">GAME OVER</h2>
+      <p class="why" id="overWhy"></p>
+      <dl class="stats">
+        <div><dt>Score</dt><dd id="sScore">0</dd></div>
+        <div><dt>Distance</dt><dd id="sDist">0 m</dd></div>
+        <div><dt>Bones</dt><dd id="sBones">0</dd></div>
+        <div><dt>Level</dt><dd id="sLevel">1</dd></div>
+        <div><dt>Best</dt><dd id="sBest">0</dd></div>
+      </dl>
+      <div class="row">
+        <button class="btn" id="btnAgain" type="button">RUN AGAIN</button>
+        <button class="btn alt" id="btnChange" type="button">CHANGE DOG</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="paused" class="overlay" hidden aria-labelledby="pauseHead">
+    <div class="panel narrow">
+      <h2 id="pauseHead">PAUSED</h2>
+      <div class="row">
+        <button class="btn" id="btnResume" type="button">RESUME</button>
+        <button class="btn alt" id="btnQuit" type="button">CHANGE DOG</button>
+      </div>
+      <p class="hint"><kbd>P</kbd> or <kbd>ESC</kbd> to resume. <kbd>M</kbd> mutes.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- constants ----------
+  const VH = 216, T = 16, GROUND_Y = VH - 32;
+  const G = 1500, JUMP_V = 470, AIR = (2 * JUMP_V) / G;
+  const BASE_SPEED = 125, SPEED_MAX = 330, LEVEL_LEN = 2400;
+  const speedFor = lv => Math.min(SPEED_MAX, BASE_SPEED * Math.pow(1.12, lv - 1));
+  // Time after takeoff until the player's feet come down through height dh (negative = below takeoff).
+  const tLand = dh => (JUMP_V + Math.sqrt(Math.max(0, JUMP_V * JUMP_V - 2 * G * dh))) / G;
+
+  const $ = id => document.getElementById(id);
+  const canvas = $('game'), ctx = canvas.getContext('2d');
+  const app = $('app'), stage = $('stage');
+  let VW = 384;
+
+  const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  const rect = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const hash = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+  const weighted = ws => {
+    let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < ws.length; i++) if ((r -= ws[i]) < 0) return i;
+    return 0;
+  };
+  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => {
+    const pa = hexRgb(a), pb = hexRgb(b);
+    return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('doggyrun.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('doggyrun.' + k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+  };
+
+  // ---------- themes ----------
+  const THEMES = [
+    { name: 'BACKYARD', sky: '#5c94fc', hill: '#00a844', hillDark: '#006c2c', cloud: '#fcfcfc',
+      grass: '#3cbc3c', grassDark: '#00802c', g1: '#c84c0c', g2: '#7c2800', g3: '#fca068',
+      b1: '#c84c0c', b2: '#3c1000', b3: '#fcbca0', stars: false },
+    { name: 'SUNSET PARK', sky: '#fc9c54', hill: '#a0507c', hillDark: '#6c2c58', cloud: '#fcd8a8',
+      grass: '#8cb02c', grassDark: '#4c7414', g1: '#a8541c', g2: '#5c2408', g3: '#e0905c',
+      b1: '#b8402c', b2: '#3c1008', b3: '#fca890', stars: false },
+    { name: 'MOONLIGHT ALLEY', sky: '#1c2a64', hill: '#284c7c', hillDark: '#142c50', cloud: '#34448c',
+      grass: '#2c8c6c', grassDark: '#145c44', g1: '#4c5ca0', g2: '#1c2458', g3: '#8c9cdc',
+      b1: '#3c64c8', b2: '#0c1440', b3: '#9cbcfc', stars: true },
+    { name: 'SNOW DAY', sky: '#94c8f8', hill: '#f4fbff', hillDark: '#a8c8e8', cloud: '#ffffff',
+      grass: '#ffffff', grassDark: '#c0dcf4', g1: '#8c6c58', g2: '#4c3428', g3: '#b8988c',
+      b1: '#c84c0c', b2: '#3c1000', b3: '#fcbca0', stars: false },
+  ];
+
+  // ---------- dogs ----------
+  const BREEDS = {
+    doberman: { name: 'Doberman', short: 'DOBERMAN', tag: 'Sleek, sharp ears, built to sprint.',
+      coat: '#24212a', dark: '#0e0c12', accent: '#c0702c', len: 15, bodyH: 6, leg: 7,
+      ear: 'erect', tail: 'docked', snout: 4, pattern: 'points', bark: 340 },
+    corgi: { name: 'Corgi', short: 'CORGI', tag: 'Short legs, big heart, shaped like a loaf.',
+      coat: '#e8883c', dark: '#a8561c', accent: '#fff4e4', len: 16, bodyH: 7, leg: 3,
+      ear: 'big', tail: 'fluff', snout: 3, pattern: 'white', bark: 560 },
+    coonhound: { name: 'Black & Tan Coonhound', short: 'COONHOUND', tag: 'Long ears, nose always on the trail.',
+      coat: '#221e1e', dark: '#0e0b0b', accent: '#b0602c', ear2: '#40342e', len: 15, bodyH: 6, leg: 6,
+      ear: 'long', tail: 'saber', snout: 4, pattern: 'points', bark: 250 },
+    golden: { name: 'Golden Retriever', short: 'GOLDEN', tag: 'Feathered tail, happiest dog in the park.',
+      coat: '#e0a448', dark: '#b07428', accent: '#f8dc98', len: 15, bodyH: 7, leg: 5,
+      ear: 'flop', tail: 'plume', snout: 3, pattern: 'feather', bark: 420 },
+  };
+  const BREED_KEYS = Object.keys(BREEDS);
+
+  // Frames 0-3 are the run cycle, frame 4 is the jump pose. Sprite is 32x24, feet on row 23.
+  function drawDog(g, b, frame) {
+    const R = (x, y, w, h, c) => rect(g, x, y, w, h, c);
+    const jump = frame === 4, wag = frame % 2;
+    const bodyBottom = 23 - b.leg, bodyTop = bodyBottom - b.bodyH + 1;
+    const bx = 5, bxr = bx + b.len - 1, hx = bxr - 2, hy = bodyTop - 5;
+    const pts = b.pattern === 'points', wht = b.pattern === 'white', fth = b.pattern === 'feather';
+    const cyc = [[-1, 1], [0, 0], [1, -1], [0, 0]];
+
+    const leg = (lx, front, far) => {
+      let dx, len = b.leg;
+      if (jump) { dx = front ? 2 : -2; len = Math.max(2, b.leg - 2); }
+      else dx = cyc[(frame + (far ? 2 : 0)) % 4][front ? 1 : 0];
+      const col = far ? b.dark : b.coat, top = bodyBottom + 1, half = Math.ceil(len / 2);
+      R(lx, top, 2, half, col);
+      R(lx + dx, top + half, 2, len - half, col);
+      if (pts) R(lx + dx, top + len - 2, 2, 2, far ? mix(b.accent, '#000000', 0.35) : b.accent);
+      if (wht) R(lx + dx, top + len - 1, 2, 1, b.accent);
+    };
+
+    leg(bx + 1, false, true);
+    leg(bxr - 3, true, true);
+
+    R(bx, bodyTop, b.len, b.bodyH, b.coat);
+    R(bx + 1, bodyTop, b.len - 3, 1, mix(b.coat, '#ffffff', 0.2));
+    g.clearRect(bx, bodyTop, 1, 1);
+    g.clearRect(bx, bodyBottom, 1, 1);
+    if (pts) R(bxr - 1, bodyTop + 2, 2, b.bodyH - 2, b.accent);
+    if (wht) { R(bx + 3, bodyBottom, b.len - 5, 1, b.accent); R(bxr - 1, bodyTop + 1, 2, b.bodyH - 1, b.accent); }
+    if (fth) { R(bx + 2, bodyBottom + 1, b.len - 6, 1, b.accent); R(bxr - 1, bodyTop + 2, 2, b.bodyH - 1, b.accent); }
+
+    if (b.tail === 'docked') R(bx - 2, bodyTop, 2, 2, b.coat);
+    else if (b.tail === 'fluff') { R(bx - 2, bodyTop, 3, 3, b.coat); R(bx - 2, bodyTop + 2, 2, 1, b.accent); }
+    else if (b.tail === 'saber') {
+      R(bx - 1, bodyTop, 2, 2, b.coat); R(bx - 2, bodyTop - 2 + wag, 2, 2, b.coat); R(bx - 3, bodyTop - 4 + wag * 2, 2, 2, b.coat);
+    } else {
+      R(bx - 3, bodyTop, 4, 2, b.coat); R(bx - 5, bodyTop - 1 + wag, 3, 2, b.coat);
+      R(bx - 5, bodyTop + 1 + wag, 3, 1, b.accent); R(bx - 2, bodyTop + 2, 2, 1, b.accent);
+    }
+
+    leg(bx + 3, false, false);
+    leg(bxr - 1, true, false);
+
+    // neck and head
+    R(hx - 1, hy + 3, 4, bodyTop - hy - 1, b.coat);
+    if (b.ear === 'erect') { R(hx + 1, hy - 3, 2, 3, b.coat); R(hx + 1, hy - 4, 1, 1, b.coat); }
+    if (b.ear === 'big') {
+      R(hx, hy - 2, 4, 2, b.coat); R(hx + 1, hy - 4, 3, 2, b.coat); R(hx + 2, hy - 5, 1, 1, b.coat);
+      R(hx + 2, hy - 3, 1, 2, '#f4a0a0');
+    }
+    R(hx, hy, 6, 5, b.coat);
+    g.clearRect(hx + 5, hy, 1, 1);
+    const muzzle = pts || wht ? b.accent : b.coat;
+    R(hx + 6, hy + 2, b.snout, 3, muzzle);
+    R(hx + 5 + b.snout, hy + 2, 1, 1, '#000000');
+    if (!jump && frame % 2 === 0) R(hx + 6, hy + 5, 2, 1, '#e8506c');
+    R(hx + 3, hy + 1, 1, 1, '#ffffff');
+    R(hx + 4, hy + 1, 1, 1, '#000000');
+    if (pts) { R(hx + 3, hy, 2, 1, b.accent); R(hx + 4, hy + 3, 2, 2, b.accent); }
+    if (wht) R(hx + 3, hy + 3, 3, 2, b.accent);
+    if (b.ear === 'long') {
+      const s = jump ? -1 : frame % 2;
+      R(hx + 1, hy + 1, 3, 6 + s, b.ear2); R(hx + 2, hy + 7 + s, 1, 1, b.ear2);
+    }
+    if (b.ear === 'flop') { R(hx + 1, hy, 3, 5, b.dark); R(hx + 2, hy + 5, 1, 1, b.dark); }
+  }
+
+  const SPRITES = {};
+  for (const k of BREED_KEYS) {
+    SPRITES[k] = [0, 1, 2, 3, 4].map(f => { const c = mk(32, 24); drawDog(c.getContext('2d'), BREEDS[k], f); return c; });
+  }
+
+  // ---------- tiles and props ----------
+  function groundTile(th, top) {
+    const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
+    R(0, 0, 16, 16, th.g1);
+    R(0, 7, 16, 1, th.g2); R(0, 15, 16, 1, th.g2);
+    R(7, 0, 1, 7, th.g2); R(15, 8, 1, 7, th.g2);
+    R(0, 0, 7, 1, th.g3); R(8, 8, 7, 1, th.g3);
+    R(0, 1, 1, 6, th.g3); R(8, 9, 1, 6, th.g3);
+    if (top) {
+      R(0, 0, 16, 3, th.grass); R(0, 3, 16, 1, th.grassDark);
+      R(3, 3, 1, 1, th.grass); R(10, 3, 2, 1, th.grass); R(6, 1, 1, 1, th.grassDark); R(13, 0, 1, 1, th.grassDark);
+    }
+    return c;
+  }
+  function brickTile(th) {
+    const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
+    R(0, 0, 16, 16, th.b2);
+    R(0, 1, 7, 6, th.b1); R(8, 1, 8, 6, th.b1);
+    R(0, 9, 3, 6, th.b1); R(4, 9, 8, 6, th.b1); R(13, 9, 3, 6, th.b1);
+    R(0, 0, 16, 1, th.b3);
+    R(0, 1, 7, 1, th.b3); R(8, 1, 8, 1, th.b3); R(4, 9, 8, 1, th.b3);
+    return c;
+  }
+  function pixelEllipse(g, cx, cy, rx, ry, col, half) {
+    for (let y = -ry; y <= (half ? 0 : ry); y++) {
+      const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry))));
+      rect(g, cx - hw, cy + y, hw * 2, 1, col);
+    }
+  }
+  function hillStrip(th) {
+    const c = mk(480, 72), g = c.getContext('2d');
+    const hill = (cx, r, h) => {
+      pixelEllipse(g, cx, 72, r, h, th.hillDark, true);
+      pixelEllipse(g, cx, 72, r - 2, h - 2, th.hill, true);
+      rect(g, cx - 10, 72 - h + 16, 3, 6, th.hillDark);
+      rect(g, cx + 6, 72 - h + 14, 3, 6, th.hillDark);
+      rect(g, cx - 2, 72 - h + 26, 3, 6, th.hillDark);
+    };
+    hill(110, 70, 60);
+    hill(330, 42, 34);
+    return c;
+  }
+  function cloudSprite(th) {
+    const c = mk(56, 26), g = c.getContext('2d');
+    pixelEllipse(g, 16, 16, 12, 8, th.cloud);
+    pixelEllipse(g, 28, 11, 13, 10, th.cloud);
+    pixelEllipse(g, 41, 16, 12, 8, th.cloud);
+    rect(g, 6, 18, 46, 4, th.cloud);
+    return c;
+  }
+  const TILES = THEMES.map(th => ({
+    top: groundTile(th, true), fill: groundTile(th, false), brick: brickTile(th),
+    hills: hillStrip(th), cloud: cloudSprite(th),
+  }));
+
+  const HYDRANT = (() => {
+    const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
+    const red = '#e03c28', dark = '#8c1808', light = '#fca08c';
+    R(7, 0, 2, 1, dark); R(5, 1, 6, 2, dark); R(4, 3, 8, 2, red); R(5, 5, 6, 9, red);
+    R(2, 7, 3, 3, red); R(11, 7, 3, 3, red); R(2, 8, 1, 1, dark); R(13, 8, 1, 1, dark);
+    R(6, 3, 1, 10, light); R(4, 14, 8, 2, dark);
+    return c;
+  })();
+  const CRATE = (() => {
+    const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
+    const wood = '#c07834', dark = '#5c300c', light = '#f0b070';
+    R(0, 0, 16, 16, dark); R(1, 1, 14, 14, wood); R(1, 1, 14, 1, light);
+    R(1, 5, 14, 1, dark); R(1, 10, 14, 1, dark);
+    for (let i = 0; i < 12; i++) R(2 + i, 13 - i, 1, 1, dark);
+    return c;
+  })();
+  const BONE = (() => {
+    const c = mk(12, 6), g = c.getContext('2d');
+    const shape = ['XX......XX', 'XXXXXXXXXX', 'XXXXXXXXXX', 'XX......XX'];
+    const paint = (ox, oy, col) => shape.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === 'X') rect(g, x + ox, y + oy, 1, 1, col); }));
+    for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) paint(dx, dy, '#5c3414');
+    paint(1, 1, '#fcf4e0');
+    return c;
+  })();
+
+  // ---------- world ----------
+  let solids = [], bones = [], flags = [], popups = [];
+  let genX = 0, genLevel = 1, nextFlag = LEVEL_LEN;
+  const genTheme = () => (genLevel - 1) % THEMES.length;
+
+  function addGround(x0, x1) {
+    if (x1 > x0) solids.push({ x: x0, y: GROUND_Y, w: x1 - x0, h: VH - GROUND_Y + 200, kind: 'ground', theme: genTheme() });
+  }
+  function ground(tiles) { addGround(genX, genX + tiles * T); genX += tiles * T; }
+  function platform(x, hTiles, wTiles) {
+    const p = { x, y: GROUND_Y - hTiles * T, w: wTiles * T, h: T, kind: 'brick', oneWay: true, theme: genTheme() };
+    solids.push(p);
+    return p;
+  }
+  function boneRow(x, y, n) { for (let i = 0; i < n; i++) bones.push({ x: x + i * 16, y, taken: false }); }
+
+  function obstacle(x, lv) {
+    const k = weighted(lv < 2 ? [3, 3, 2, 0] : [3, 3, 2, 2]);
+    let s;
+    if (k === 0) s = { x: x + 3, y: GROUND_Y - 15, w: 10, h: 15, kind: 'hydrant' };
+    else if (k === 1) { const h = lv < 2 ? 1 : ri(1, 2); s = { x, y: GROUND_Y - h * T, w: T, h: h * T, kind: 'crate' }; }
+    else if (k === 2) s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'pipe' };
+    else if (Math.random() < 0.5) s = { x, y: GROUND_Y - 3 * T, w: 2 * T, h: 3 * T, kind: 'pipe' };
+    else s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'crate' };
+    solids.push(s);
+    if (Math.random() < 0.45) bones.push({ x: s.x + s.w / 2 - 6, y: s.y - 34, taken: false });
+  }
+
+  function flatChunk(lv, sp, reach, m) {
+    const len = m * 2 + ri(2, 8), start = genX;
+    ground(len);
+    for (let px = start + m * T; px <= start + (len - m) * T; px += (m + ri(0, 3)) * T) {
+      if (Math.random() < 0.8) obstacle(px, lv);
+    }
+  }
+  function gapChunk(lv, sp, reach, m, maxGap) {
+    ground(m);
+    const g = ri(2, maxGap), gx = genX;
+    genX += g * T;
+    if (Math.random() < 0.7) {
+      const cx = gx + (g * T) / 2;
+      for (let i = -1; i <= 1; i++) bones.push({ x: cx + i * 16 - 6, y: GROUND_Y - 62 + Math.abs(i) * 10, taken: false });
+    }
+  }
+  function platformChunk(lv, sp, reach, m) {
+    ground(m);
+    const n = ri(2, lv >= 2 ? 4 : 3), extra = Math.floor((sp - BASE_SPEED) / 60);
+    const plats = [];
+    let px = genX, ph = 3;
+    for (let i = 0; i < n; i++) {
+      const w = ri(3, 5) + extra;
+      plats.push(platform(px, ph, w));
+      const nh = Math.min(8, ph + ri(1, 2));
+      const travel = sp * tLand((nh - ph) * T);
+      px += w * T + Math.max(T, Math.round((travel - 40) / T) * T);
+      ph = nh;
+    }
+    plats.forEach((p, i) => {
+      const count = i === plats.length - 1 ? Math.min(3, p.w / T - 1) : 1;
+      boneRow(p.x + (p.w - (count - 1) * 16) / 2 - 6, p.y - 14, count);
+    });
+    const first = plats[0], last = plats[plats.length - 1];
+    const lastEnd = last.x + last.w;
+    if (lv >= 2 && n >= 2 && Math.random() < 0.6) {
+      const pitStart = first.x + first.w;
+      const pitEnd = Math.max(pitStart + 2 * T, last.x + Math.floor(last.w / 2 / T) * T);
+      addGround(genX, pitStart);
+      genX = pitEnd;
+      addGround(genX, lastEnd);
+    } else {
+      addGround(genX, lastEnd);
+    }
+    genX = Math.max(genX, lastEnd);
+    ground(2);
+  }
+  function bridgeChunk(lv, sp, reach, m) {
+    ground(m);
+    const extra = Math.floor((sp - BASE_SPEED) / 60);
+    const a = Math.max(1, Math.round((sp * tLand(2 * T) - 40) / T));
+    const p = platform(genX + a * T, 2, ri(3, 4) + extra);
+    boneRow(p.x + 8, p.y - 14, Math.min(3, p.w / T - 1));
+    const b = clamp(Math.floor((sp * tLand(-2 * T) * 0.7) / T), 2, 8);
+    genX = p.x + p.w + b * T;
+  }
+
+  function genChunk() {
+    const lv = genLevel, sp = speedFor(lv), reach = sp * AIR;
+    const m = Math.ceil((reach * (1.1 - Math.min(0.25, (lv - 1) * 0.04)) + 44) / T);
+    const maxGap = clamp(Math.floor((reach * 0.72) / T), 2, 7);
+    const pick = weighted(lv === 1 ? [4, 3, 3, 0] : [3, 3, 3, 2]);
+    [flatChunk, gapChunk, platformChunk, bridgeChunk][pick](lv, sp, reach, m, maxGap);
+    if (genX >= nextFlag) {
+      ground(4);
+      flags.push({ x: genX + 8, level: lv + 1, passed: false, drop: 0 });
+      genLevel++;
+      ground(16);
+      nextFlag = genX + LEVEL_LEN;
+    }
+  }
+  function ensureGen() { while (genX < camX + VW + 320) genChunk(); }
+  function prune() {
+    const left = camX - 96;
+    solids = solids.filter(s => s.x + s.w > left);
+    bones = bones.filter(b => b.x + 12 > left && !b.taken);
+    flags = flags.filter(f => f.x + 40 > left);
+    popups = popups.filter(p => p.t > 0);
+  }
+
+  // ---------- game state ----------
+  const P = { x: 0, y: 0, w: 18, h: 15, vy: 0, onGround: true, coyote: 0, buffer: 0, dist: 0 };
+  let state = 'select', dogKey = store.get('dog', 'corgi'), best = store.get('best', 0);
+  if (!BREEDS[dogKey]) dogKey = 'corgi';
+  let level = 1, speed = BASE_SPEED, targetSpeed = BASE_SPEED, bonesGot = 0, levelBonus = 0;
+  let camX = 0, banner = null, deathKind = '', deathCause = '', deathTimer = 0, time = 0;
+  let curTheme = 0, skyFrom = THEMES[0].sky, skyT = 1;
+
+  function resetWorld() {
+    solids = []; bones = []; flags = []; popups = [];
+    genX = 0; genLevel = 1; nextFlag = LEVEL_LEN;
+    ground(24);
+    curTheme = 0; skyFrom = THEMES[0].sky; skyT = 1;
+  }
+
+  function score() { return Math.floor(P.dist / T) + bonesGot * 25 + levelBonus; }
+
+  function startGame(key) {
+    if (key) { dogKey = key; store.set('dog', key); }
+    audio();
+    resetWorld();
+    Object.assign(P, { x: 160, y: GROUND_Y - P.h, vy: 0, onGround: true, coyote: 0, buffer: 0, dist: 0 });
+    level = 1; speed = targetSpeed = speedFor(1); bonesGot = 0; levelBonus = 0;
+    camX = P.x - VW * 0.28;
+    ensureGen();
+    banner = { title: 'LEVEL 1', sub: THEMES[0].name, sub2: 'TAP OR SPACE TO JUMP', t: 2.6 };
+    showOverlay(null);
+    state = 'play';
+    sfx.bark(BREEDS[dogKey].bark);
+  }
+
+  function levelUp(lv, f) {
+    level = lv;
+    targetSpeed = speedFor(lv);
+    levelBonus += 100;
+    popups.push({ x: f.x - 12, y: GROUND_Y - 130, text: '+100', t: 1.2 });
+    skyFrom = currentSky(); skyT = 0;
+    curTheme = (lv - 1) % THEMES.length;
+    banner = { title: 'LEVEL ' + lv, sub: THEMES[curTheme].name, sub2: 'SPEED x' + (targetSpeed / BASE_SPEED).toFixed(2), t: 2.4 };
+    sfx.level();
+  }
+
+  const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  function stepPlayer(h) {
+    P.buffer -= h; P.coyote -= h;
+    if (P.buffer > 0 && (P.onGround || P.coyote > 0)) {
+      P.vy = -JUMP_V; P.onGround = false; P.coyote = 0; P.buffer = 0;
+      sfx.jump();
+    }
+    speed += clamp(targetSpeed - speed, -90 * h, 90 * h);
+
+    P.vy = Math.min(P.vy + G * h, 800);
+    const prevTop = P.y, prevBot = P.y + P.h;
+    P.y += P.vy * h;
+    P.onGround = false;
+    for (const s of solids) {
+      if (!overlaps(P, s)) continue;
+      if (P.vy >= 0 && prevBot <= s.y + 0.01) { P.y = s.y - P.h; P.vy = 0; P.onGround = true; }
+      else if (!s.oneWay && P.vy < 0 && prevTop >= s.y + s.h - 0.01) { P.y = s.y + s.h; P.vy = 0; }
+    }
+    if (P.onGround) P.coyote = 0.09;
+
+    const dx = speed * h;
+    P.x += dx; P.dist += dx;
+    for (const s of solids) {
+      if (s.oneWay || !overlaps(P, s)) continue;
+      if (P.y + P.h - s.y <= 6 && P.vy >= 0) { P.y = s.y - P.h; P.vy = 0; P.onGround = true; continue; }
+      return die('crash', s.kind);
+    }
+    if (P.y > VH + 30) die('fall', 'hole');
+  }
+
+  function die(kind, cause) {
+    state = 'dying'; deathKind = kind; deathCause = cause; deathTimer = 0;
+    if (kind === 'crash') { P.vy = -380; sfx.crash(); } else sfx.fall();
+  }
+
+  const DEATH_TEXT = {
+    hydrant: 'Bonked a fire hydrant.',
+    crate: 'Ran into a crate.',
+    pipe: 'Bumped into a green pipe.',
+    ground: 'Smacked into a ledge.',
+    hole: 'Fell down a hole.',
+  };
+
+  function gameOver() {
+    state = 'over';
+    const s = score(), isBest = s > best;
+    if (isBest) { best = s; store.set('best', best); }
+    $('overWhy').textContent = 'Your ' + BREEDS[dogKey].name + ': ' + DEATH_TEXT[deathCause];
+    $('sScore').textContent = s;
+    $('sDist').textContent = Math.floor(P.dist / T) + ' m';
+    $('sBones').textContent = bonesGot;
+    $('sLevel').textContent = level;
+    $('sBest').textContent = isBest ? best + ' NEW!' : best;
+    $('sBest').classList.toggle('new', isBest);
+    showOverlay('over');
+    const again = $('btnAgain');
+    again.disabled = true;
+    setTimeout(() => { again.disabled = false; if (state === 'over') again.focus(); }, 600);
+  }
+
+  function update(dt) {
+    time += dt;
+    if (banner) banner.t -= dt;
+    if (skyT < 1) skyT = Math.min(1, skyT + dt / 1.2);
+    for (const p of popups) { p.t -= dt; p.y -= 20 * dt; }
+    for (const f of flags) if (f.passed && f.drop < 90) f.drop = Math.min(90, f.drop + 120 * dt);
+
+    if (state === 'select') {
+      camX += 40 * dt;
+      ensureGen(); prune();
+      return;
+    }
+    if (state === 'play') {
+      let t = dt;
+      while (t > 0 && state === 'play') { const h = Math.min(t, 1 / 240); stepPlayer(h); t -= h; }
+      if (state !== 'play') return;
+      camX = P.x - VW * 0.28;
+      for (const b of bones) {
+        if (!b.taken && overlaps(P, { x: b.x - 2, y: b.y - 3, w: 16, h: 12 })) {
+          b.taken = true; bonesGot++;
+          popups.push({ x: b.x, y: b.y - 6, text: '+25', t: 0.8 });
+          sfx.bone();
+        }
+      }
+      for (const f of flags) if (!f.passed && P.x + P.w > f.x) { f.passed = true; levelUp(f.level, f); }
+      ensureGen(); prune();
+      return;
+    }
+    if (state === 'dying') {
+      deathTimer += dt;
+      if (deathKind === 'crash' && deathTimer > 0.35) { P.vy += G * 0.8 * dt; P.y += P.vy * dt; }
+      if (deathKind === 'fall') { P.vy = Math.min(P.vy + G * dt, 800); P.y += P.vy * dt; }
+      if (deathTimer > (deathKind === 'crash' ? 1.7 : 1.0)) gameOver();
+    }
+  }
+
+  // ---------- drawing ----------
+  function currentSky() { return mix(skyFrom, THEMES[curTheme].sky, skyT); }
+
+  function text(t, x, y, align = 'left', color = '#fcfcfc', size = 8) {
+    ctx.font = size + 'px "Press Start 2P", ui-monospace, monospace';
+    ctx.textAlign = align;
+    ctx.fillStyle = '#000000'; ctx.fillText(t, x + 1, y + 1);
+    ctx.fillStyle = color; ctx.fillText(t, x, y);
+  }
+
+  function drawSolid(s, cx) {
+    const x = s.x - cx, tiles = TILES[s.theme ?? curTheme];
+    if (s.kind === 'ground') {
+      for (let tx = 0; tx < s.w; tx += T) {
+        ctx.drawImage(tiles.top, x + tx, GROUND_Y);
+        ctx.drawImage(tiles.fill, x + tx, GROUND_Y + T);
+      }
+    } else if (s.kind === 'brick') {
+      for (let tx = 0; tx < s.w; tx += T) ctx.drawImage(tiles.brick, x + tx, s.y);
+    } else if (s.kind === 'crate') {
+      for (let tx = 0; tx < s.w; tx += T) for (let ty = 0; ty < s.h; ty += T) ctx.drawImage(CRATE, x + tx, s.y + ty);
+    } else if (s.kind === 'hydrant') {
+      ctx.drawImage(HYDRANT, x - 3, GROUND_Y - 16);
+    } else if (s.kind === 'pipe') {
+      const y = s.y;
+      rect(ctx, x, y + 12, s.w, s.h - 12, '#003c00');
+      rect(ctx, x + 2, y + 12, s.w - 4, s.h - 12, '#00a800');
+      rect(ctx, x + 5, y + 12, 3, s.h - 12, '#b8f818');
+      rect(ctx, x + 10, y + 12, 2, s.h - 12, '#58d854');
+      rect(ctx, x - 2, y, s.w + 4, 12, '#003c00');
+      rect(ctx, x, y + 1, s.w, 10, '#00a800');
+      rect(ctx, x + 3, y + 2, 3, 8, '#b8f818');
+      rect(ctx, x + 8, y + 2, 2, 8, '#58d854');
+    }
+  }
+
+  function drawFlag(f, cx) {
+    const x = Math.round(f.x - cx), top = GROUND_Y - 112;
+    rect(ctx, x, top, 2, 112, '#e8e8e8');
+    rect(ctx, x + 1, top, 1, 112, '#a8a8a8');
+    rect(ctx, x - 2, top - 6, 6, 6, '#3cbc3c');
+    rect(ctx, x - 1, top - 5, 2, 2, '#b8f818');
+    const fy = top + 4 + Math.round(f.drop);
+    for (let r = 0; r < 14; r++) {
+      const w = Math.round(18 * (1 - Math.abs(r - 6.5) / 7.5));
+      rect(ctx, x - w, fy + r, w, 1, '#f8b800');
+    }
+    // paw print
+    rect(ctx, x - 9, fy + 6, 4, 3, '#7c3c14');
+    rect(ctx, x - 10, fy + 4, 1, 1, '#7c3c14'); rect(ctx, x - 8, fy + 3, 1, 1, '#7c3c14');
+    rect(ctx, x - 6, fy + 3, 1, 1, '#7c3c14'); rect(ctx, x - 4, fy + 4, 1, 1, '#7c3c14');
+    rect(ctx, x - 7, GROUND_Y - 8, 16, 8, '#5c5c5c');
+    rect(ctx, x - 6, GROUND_Y - 7, 14, 1, '#a8a8a8');
+    if (!f.passed) text('L' + f.level, x + 6, top - 4, 'left');
+  }
+
+  function drawBackground(cx) {
+    const th = THEMES[curTheme], tiles = TILES[curTheme];
+    ctx.fillStyle = currentSky();
+    ctx.fillRect(0, 0, VW, VH);
+    if (th.stars) {
+      for (let i = 0; i < 46; i++) {
+        const sx = Math.floor(((hash(i) * 900 - cx * 0.05) % 900 + 900) % 900);
+        if (sx > VW) continue;
+        const tw = Math.sin(time * 3 + i) > 0.6;
+        rect(ctx, sx, Math.floor(hash(i + 50) * 120) + 4, tw ? 2 : 1, tw ? 2 : 1, '#fcfcfc');
+      }
+      pixelEllipse(ctx, VW - 56, 44, 12, 12, '#fcf0b0');
+      pixelEllipse(ctx, VW - 50, 40, 10, 10, currentSky());
+    }
+    const cp = cx * 0.2;
+    for (let i = Math.floor((cp - 80) / 170); i * 170 - cp < VW + 60; i++) {
+      ctx.drawImage(tiles.cloud, Math.round(i * 170 + hash(i) * 90 - cp), Math.round(20 + hash(i + 7) * 52));
+    }
+    const hp = Math.round(cx * 0.5) % 480;
+    for (let x = -hp; x < VW; x += 480) ctx.drawImage(tiles.hills, x, GROUND_Y - 72);
+  }
+
+  function drawPlayer(cx) {
+    const frame = state === 'play' && P.onGround ? [0, 1, 2, 3][Math.floor(P.dist / 7) % 4] : 4;
+    const sx = Math.round(P.x - cx - 7), sy = Math.round(P.y + P.h - 24);
+    if (state === 'dying' && deathKind === 'crash') {
+      ctx.save();
+      ctx.translate(sx, sy + 24);
+      ctx.scale(1, -1);
+      ctx.drawImage(SPRITES[dogKey][4], 0, 0);
+      ctx.restore();
+      if (deathTimer < 0.8) text('YIP!', sx + 18, sy - 12, 'left', '#f8b800');
+    } else {
+      ctx.drawImage(SPRITES[dogKey][frame], sx, sy);
+    }
+  }
+
+  function drawHud() {
+    const pad = 10, b = BREEDS[dogKey];
+    text(b.short, pad, 8);
+    text(String(score()).padStart(6, '0'), pad, 19);
+    const mx = Math.round(VW / 2) - 18;
+    text('BONES', mx, 8);
+    ctx.drawImage(BONE, mx, 19);
+    text('x' + String(bonesGot).padStart(2, '0'), mx + 14, 19);
+    text('LEVEL', VW - pad, 8, 'right');
+    text(String(level), VW - pad, 19, 'right');
+  }
+
+  function drawBanner() {
+    if (!banner || banner.t <= 0) return;
+    ctx.globalAlpha = Math.min(1, banner.t / 0.4);
+    const y = Math.round(VH * 0.3);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, y - 8, VW, 52);
+    text(banner.title, VW / 2, y, 'center', '#f8b800', 16);
+    text(banner.sub, VW / 2, y + 22, 'center');
+    if (banner.sub2) text(banner.sub2, VW / 2, y + 33, 'center', '#a8d8fc');
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    ctx.textBaseline = 'top';
+    const cx = Math.floor(camX);
+    drawBackground(cx);
+    for (const f of flags) if (f.x - cx > -40 && f.x - cx < VW + 40) drawFlag(f, cx);
+    for (const s of solids) if (s.x + s.w > cx - 8 && s.x < cx + VW + 8) drawSolid(s, cx);
+    for (const b of bones) {
+      if (b.taken || b.x - cx < -16 || b.x - cx > VW) continue;
+      ctx.drawImage(BONE, Math.round(b.x - cx), Math.round(b.y + Math.sin(time * 4 + b.x * 0.05) * 1.5));
+    }
+    if (state !== 'select') drawPlayer(cx);
+    for (const p of popups) text(p.text, Math.round(p.x - cx), Math.round(p.y), 'left', '#fcfcfc');
+    if (state !== 'select') { drawHud(); drawBanner(); }
+  }
+
+  // ---------- sound ----------
+  let ac = null, muted = store.get('muted', false);
+  function audio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+  }
+  function tone(f0, f1, dur, type = 'square', vol = 0.07, delay = 0) {
+    if (!ac || muted) return;
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  const sfx = {
+    jump: () => tone(300, 640, 0.13),
+    bone: () => { tone(988, 0, 0.07, 'square', 0.05); tone(1319, 0, 0.16, 'square', 0.05, 0.07); },
+    level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0, 0.14, 'square', 0.06, i * 0.1)),
+    crash: () => tone(520, 90, 0.55, 'triangle', 0.14),
+    fall: () => tone(760, 70, 0.9, 'square', 0.05),
+    bark: f => { tone(f, f * 0.55, 0.09, 'sawtooth', 0.05); tone(f * 0.9, f * 0.5, 0.11, 'sawtooth', 0.05, 0.14); },
+  };
+  function setMuted(v) {
+    muted = v; store.set('muted', v);
+    $('btnSound').setAttribute('aria-label', v ? 'Unmute sound' : 'Mute sound');
+    $('soundIcon').setAttribute('d', v ? 'M1 5h3l4-4v14l-4-4H1zM10 5l1-1 2 2 2-2 1 1-2 2 2 2-1 1-2-2-2 2-1-1 2-2z' : 'M1 5h3l4-4v14l-4-4H1zM10 4h2v8h-2zM13 2h2v12h-2z');
+  }
+
+  // ---------- overlays and input ----------
+  const OVERLAYS = ['select', 'over', 'paused'];
+  function showOverlay(id) { for (const o of OVERLAYS) $(o).hidden = o !== id; }
+
+  function goSelect() {
+    state = 'select';
+    resetWorld();
+    camX = 0;
+    showOverlay('select');
+    const btn = document.querySelector(`.dog-card[data-dog="${dogKey}"]`);
+    if (btn) btn.focus();
+  }
+  function pause() { if (state !== 'play') return; state = 'paused'; showOverlay('paused'); $('btnResume').focus(); }
+  function resume() { if (state !== 'paused') return; state = 'play'; showOverlay(null); last = performance.now(); }
+
+  function jump() { if (state === 'play') { audio(); P.buffer = 0.12; } }
+
+  window.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W') {
+      if (state === 'play') { e.preventDefault(); if (!e.repeat) jump(); }
+    } else if (k === 'p' || k === 'P' || k === 'Escape') {
+      if (state === 'play') pause(); else if (state === 'paused') resume();
+    } else if (k === 'm' || k === 'M') {
+      setMuted(!muted);
+    } else if (state === 'select' && k >= '1' && k <= '4') {
+      startGame(BREED_KEYS[Number(k) - 1]);
+    }
+  });
+  app.addEventListener('pointerdown', e => {
+    if (e.target.closest('button, .overlay')) return;
+    if (state === 'play') { e.preventDefault(); jump(); }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  $('btnPause').addEventListener('click', () => { if (state === 'play') pause(); else resume(); });
+  $('btnSound').addEventListener('click', () => { setMuted(!muted); audio(); });
+  $('btnAgain').addEventListener('click', () => startGame());
+  $('btnChange').addEventListener('click', goSelect);
+  $('btnResume').addEventListener('click', resume);
+  $('btnQuit').addEventListener('click', goSelect);
+
+  // dog picker cards with live previews
+  const previews = [];
+  BREED_KEYS.forEach((k, i) => {
+    const b = BREEDS[k];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dog-card';
+    btn.dataset.dog = k;
+    const cv = mk(40, 30);
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = b.name;
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = b.tag;
+    const key = document.createElement('span'); key.className = 'key'; key.textContent = 'PRESS ' + (i + 1);
+    btn.append(cv, name, tag, key);
+    btn.addEventListener('click', () => startGame(k));
+    $('dogs').append(btn);
+    previews.push({ cv, k });
+  });
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let previewFrame = 0;
+  function drawPreviews() {
+    for (const { cv, k } of previews) {
+      const g = cv.getContext('2d');
+      rect(g, 0, 0, 40, 30, THEMES[0].sky);
+      g.drawImage(TILES[0].top, -((previewFrame * 3) % 16), 26);
+      g.drawImage(TILES[0].top, 16 - ((previewFrame * 3) % 16), 26);
+      g.drawImage(TILES[0].top, 32 - ((previewFrame * 3) % 16), 26);
+      g.drawImage(SPRITES[k][reduceMotion ? 1 : previewFrame % 4], 4, 3);
+    }
+  }
+  drawPreviews();
+  if (!reduceMotion) setInterval(() => { if (state === 'select') { previewFrame++; drawPreviews(); } }, 110);
+
+  // ---------- sizing and loop ----------
+  function resize() {
+    const cs = getComputedStyle(app);
+    const availW = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    VW = clamp(Math.round((VH * availW) / availH / 2) * 2, 240, 432);
+    let scale = Math.min(availW / VW, availH / VH);
+    if (scale >= 2 && Math.floor(scale) / scale > 0.88) scale = Math.floor(scale);
+    canvas.width = VW; canvas.height = VH;
+    ctx.imageSmoothingEnabled = false;
+    stage.style.width = Math.floor(VW * scale) + 'px';
+    stage.style.height = Math.floor(VH * scale) + 'px';
+    if (state === 'play' || state === 'paused') camX = P.x - VW * 0.28;
+    ensureGen();
+  }
+  window.addEventListener('resize', resize);
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state !== 'paused') update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  setMuted(muted);
+  resetWorld();
+  resize();
+  goSelect();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
