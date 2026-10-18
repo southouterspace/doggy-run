@@ -17,8 +17,7 @@
     --text: #fcfcfc;
     --muted: #a8b4e8;
     --gold: #f8b800;
-    --brick: #c84c0c;
-    --sky: #5c94fc;
+    --collar: #d6453a;
     --scrim: rgba(8, 10, 28, 0.72);
     --press: rgba(0, 0, 0, 0.35);
     --pixel: "Press Start 2P", ui-monospace, "Courier New", monospace;
@@ -104,7 +103,7 @@
     font-family: var(--pixel);
     font-weight: 400;
     color: var(--gold);
-    text-shadow: 4px 4px 0 var(--brick);
+    text-shadow: 4px 4px 0 var(--collar);
     letter-spacing: 2px;
     text-wrap: balance;
   }
@@ -144,7 +143,7 @@
   .dog-card:hover, .dog-card:focus-visible {
     outline: none;
     transform: translateY(-3px);
-    box-shadow: inset 0 0 0 3px var(--gold), 0 3px 0 var(--brick);
+    box-shadow: inset 0 0 0 3px var(--gold), 0 3px 0 var(--collar);
   }
   .dog-card canvas {
     width: 100%;
@@ -202,7 +201,7 @@
   .btn {
     padding: 13px 16px 12px;
     border: 0;
-    background: var(--brick);
+    background: var(--collar);
     color: var(--text);
     font-family: var(--pixel);
     font-size: 11px;
@@ -238,7 +237,7 @@
       <h1 id="titleHead">DOGGY RUN</h1>
       <p class="eyebrow">CHOOSE YOUR DOG</p>
       <div class="dogs" id="dogs"></div>
-      <p class="hint">Tap the screen or press <kbd>SPACE</kbd> to jump. Clear hydrants, crates, pipes and holes. Hop onto floating bricks to climb for bones. Every flag starts a faster level.</p>
+      <p class="hint">Tap the screen or press <kbd>SPACE</kbd> to jump. Clear fire hydrants, kibble bags, doghouses and holes. Hop onto floating biscuits to climb for bones. Every park sign starts a faster level.</p>
     </div>
   </section>
 
@@ -311,18 +310,14 @@
 
   // ---------- themes ----------
   const THEMES = [
-    { name: 'BACKYARD', sky: '#5c94fc', hill: '#00a844', hillDark: '#006c2c', cloud: '#fcfcfc',
-      grass: '#3cbc3c', grassDark: '#00802c', g1: '#c84c0c', g2: '#7c2800', g3: '#fca068',
-      b1: '#c84c0c', b2: '#3c1000', b3: '#fcbca0', stars: false },
-    { name: 'SUNSET PARK', sky: '#fc9c54', hill: '#a0507c', hillDark: '#6c2c58', cloud: '#fcd8a8',
-      grass: '#8cb02c', grassDark: '#4c7414', g1: '#a8541c', g2: '#5c2408', g3: '#e0905c',
-      b1: '#b8402c', b2: '#3c1008', b3: '#fca890', stars: false },
-    { name: 'MOONLIGHT ALLEY', sky: '#1c2a64', hill: '#284c7c', hillDark: '#142c50', cloud: '#34448c',
-      grass: '#2c8c6c', grassDark: '#145c44', g1: '#4c5ca0', g2: '#1c2458', g3: '#8c9cdc',
-      b1: '#3c64c8', b2: '#0c1440', b3: '#9cbcfc', stars: true },
-    { name: 'SNOW DAY', sky: '#94c8f8', hill: '#f4fbff', hillDark: '#a8c8e8', cloud: '#ffffff',
-      grass: '#ffffff', grassDark: '#c0dcf4', g1: '#8c6c58', g2: '#4c3428', g3: '#b8988c',
-      b1: '#c84c0c', b2: '#3c1000', b3: '#fcbca0', stars: false },
+    { name: 'BACKYARD', sky: '#8cc8ec', far: '#5c9c5c', farDark: '#3c7444', farKind: 'trees', cloud: '#fcfcfc',
+      grass: '#58b448', grassDark: '#2c7c34', dirt: '#8c5c34', dirtDark: '#5c3820', dirtLight: '#ac7c4c', stars: false },
+    { name: 'SUNSET PARK', sky: '#f4a46c', far: '#9c5c6c', farDark: '#6c3850', farKind: 'trees', cloud: '#fcd8b0',
+      grass: '#8cac3c', grassDark: '#587820', dirt: '#7c4c2c', dirtDark: '#4c2c18', dirtLight: '#a06c44', stars: false },
+    { name: 'MOONLIGHT ALLEY', sky: '#1c2a5c', far: '#2c3c6c', farDark: '#1c2850', farKind: 'city', cloud: '#34448c',
+      grass: '#3c7c6c', grassDark: '#1c5048', dirt: '#4c4458', dirtDark: '#2c2838', dirtLight: '#6c6480', stars: true },
+    { name: 'SNOW DAY', sky: '#b0d4f0', far: '#3c7c6c', farDark: '#24544c', farKind: 'pines', cloud: '#ffffff',
+      grass: '#ffffff', grassDark: '#c0dcf4', dirt: '#7c6454', dirtDark: '#4c3c34', dirtLight: '#a08878', stars: false },
   ];
 
   // ---------- dogs ----------
@@ -415,26 +410,20 @@
   }
 
   // ---------- tiles and props ----------
-  function groundTile(th, top) {
+  // Dirt with pebbles; the paw variant leaves a print in the ground.
+  function groundTile(th, top, paw) {
     const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
-    R(0, 0, 16, 16, th.g1);
-    R(0, 7, 16, 1, th.g2); R(0, 15, 16, 1, th.g2);
-    R(7, 0, 1, 7, th.g2); R(15, 8, 1, 7, th.g2);
-    R(0, 0, 7, 1, th.g3); R(8, 8, 7, 1, th.g3);
-    R(0, 1, 1, 6, th.g3); R(8, 9, 1, 6, th.g3);
-    if (top) {
-      R(0, 0, 16, 3, th.grass); R(0, 3, 16, 1, th.grassDark);
-      R(3, 3, 1, 1, th.grass); R(10, 3, 2, 1, th.grass); R(6, 1, 1, 1, th.grassDark); R(13, 0, 1, 1, th.grassDark);
+    R(0, 0, 16, 16, th.dirt);
+    R(2, 5, 2, 1, th.dirtDark); R(11, 3, 1, 1, th.dirtLight); R(6, 11, 2, 1, th.dirtLight);
+    R(13, 12, 2, 1, th.dirtDark); R(1, 14, 1, 1, th.dirtLight); R(9, 7, 1, 1, th.dirtDark);
+    if (paw) {
+      R(6, 7, 4, 3, th.dirtDark);
+      R(5, 5, 1, 1, th.dirtDark); R(7, 4, 1, 1, th.dirtDark); R(9, 4, 1, 1, th.dirtDark); R(11, 5, 1, 1, th.dirtDark);
     }
-    return c;
-  }
-  function brickTile(th) {
-    const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
-    R(0, 0, 16, 16, th.b2);
-    R(0, 1, 7, 6, th.b1); R(8, 1, 8, 6, th.b1);
-    R(0, 9, 3, 6, th.b1); R(4, 9, 8, 6, th.b1); R(13, 9, 3, 6, th.b1);
-    R(0, 0, 16, 1, th.b3);
-    R(0, 1, 7, 1, th.b3); R(8, 1, 8, 1, th.b3); R(4, 9, 8, 1, th.b3);
+    if (top) {
+      R(0, 0, 16, 4, th.grass); R(0, 4, 16, 1, th.grassDark);
+      R(2, 5, 1, 1, th.grassDark); R(9, 5, 2, 1, th.grassDark); R(4, 0, 1, 1, th.grassDark); R(12, 1, 1, 1, th.grassDark);
+    }
     return c;
   }
   function pixelEllipse(g, cx, cy, rx, ry, col, half) {
@@ -443,17 +432,35 @@
       rect(g, cx - hw, cy + y, hw * 2, 1, col);
     }
   }
-  function hillStrip(th) {
-    const c = mk(480, 72), g = c.getContext('2d');
-    const hill = (cx, r, h) => {
-      pixelEllipse(g, cx, 72, r, h, th.hillDark, true);
-      pixelEllipse(g, cx, 72, r - 2, h - 2, th.hill, true);
-      rect(g, cx - 10, 72 - h + 16, 3, 6, th.hillDark);
-      rect(g, cx + 6, 72 - h + 14, 3, 6, th.hillDark);
-      rect(g, cx - 2, 72 - h + 26, 3, 6, th.hillDark);
-    };
-    hill(110, 70, 60);
-    hill(330, 42, 34);
+  // Far scenery: round trees, a city skyline, or snowy pines, depending on the theme.
+  function sceneryStrip(th) {
+    const c = mk(480, 80), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
+    pixelEllipse(g, 120, 80, 200, 18, th.farDark, true);
+    pixelEllipse(g, 380, 80, 160, 12, th.farDark, true);
+    if (th.farKind === 'trees') {
+      for (const [x, r] of [[40, 16], [96, 22], [150, 14], [250, 20], [330, 15], [420, 19]]) {
+        R(x - 2, 80 - r - 8, 4, r + 8, th.farDark);
+        pixelEllipse(g, x, 80 - r - 14, r, r, th.far);
+        pixelEllipse(g, x - 4, 80 - r - 18, r - 6, r - 7, mix(th.far, '#ffffff', 0.12));
+      }
+    } else if (th.farKind === 'city') {
+      let x = 0;
+      for (const [w, h] of [[34, 46], [22, 62], [40, 38], [28, 70], [36, 50], [24, 58], [44, 34], [30, 64], [38, 44], [26, 56], [34, 40], [30, 60], [40, 48], [24, 66]]) {
+        R(x, 80 - h, w - 2, h, th.far);
+        for (let wy = 80 - h + 6; wy < 74; wy += 8)
+          for (let wx = x + 4; wx < x + w - 6; wx += 7)
+            if (hash(wx * 7 + wy) > 0.55) R(wx, wy, 3, 4, '#f8d878');
+        x += w;
+      }
+    } else {
+      for (const [x, h] of [[30, 44], [80, 58], [128, 40], [190, 62], [250, 46], [300, 54], [360, 42], [420, 60], [466, 44]]) {
+        R(x - 1, 74, 3, 6, th.farDark);
+        for (let y = 0; y < h; y++) {
+          const hw = Math.floor((y % 14 + y / 3) / 2) + 1;
+          R(x - hw, 80 - h - 6 + y, hw * 2 + 1, 1, y % 14 < 3 ? '#ffffff' : th.far);
+        }
+      }
+    }
     return c;
   }
   function cloudSprite(th) {
@@ -465,8 +472,8 @@
     return c;
   }
   const TILES = THEMES.map(th => ({
-    top: groundTile(th, true), fill: groundTile(th, false), brick: brickTile(th),
-    hills: hillStrip(th), cloud: cloudSprite(th),
+    top: groundTile(th, true), fill: groundTile(th, false), paw: groundTile(th, false, true),
+    scenery: sceneryStrip(th), cloud: cloudSprite(th),
   }));
 
   const HYDRANT = (() => {
@@ -477,12 +484,13 @@
     R(6, 3, 1, 10, light); R(4, 14, 8, 2, dark);
     return c;
   })();
-  const CRATE = (() => {
+  const KIBBLE = (() => {
     const c = mk(16, 16), g = c.getContext('2d'), R = (x, y, w, h, col) => rect(g, x, y, w, h, col);
-    const wood = '#c07834', dark = '#5c300c', light = '#f0b070';
-    R(0, 0, 16, 16, dark); R(1, 1, 14, 14, wood); R(1, 1, 14, 1, light);
-    R(1, 5, 14, 1, dark); R(1, 10, 14, 1, dark);
-    for (let i = 0; i < 12; i++) R(2 + i, 13 - i, 1, 1, dark);
+    const paper = '#e8c890', dark = '#7c5428', label = '#d6453a';
+    R(1, 1, 14, 15, dark); R(2, 2, 12, 13, paper); R(2, 1, 12, 1, dark);
+    R(3, 0, 2, 2, dark); R(11, 0, 2, 2, dark); R(2, 2, 12, 1, '#c8a46c');
+    R(3, 6, 10, 6, label);
+    R(6, 9, 4, 2, '#fcf4e0'); R(5, 7, 1, 1, '#fcf4e0'); R(7, 7, 1, 1, '#fcf4e0'); R(9, 7, 1, 1, '#fcf4e0'); R(10, 8, 1, 1, '#fcf4e0');
     return c;
   })();
   const BONE = (() => {
@@ -504,7 +512,7 @@
   }
   function ground(tiles) { addGround(genX, genX + tiles * T); genX += tiles * T; }
   function platform(x, hTiles, wTiles) {
-    const p = { x, y: GROUND_Y - hTiles * T, w: wTiles * T, h: T, kind: 'brick', oneWay: true, theme: genTheme() };
+    const p = { x, y: GROUND_Y - hTiles * T, w: wTiles * T, h: T, kind: 'biscuit', oneWay: true, theme: genTheme() };
     solids.push(p);
     return p;
   }
@@ -514,10 +522,10 @@
     const k = weighted(lv < 2 ? [3, 3, 2, 0] : [3, 3, 2, 2]);
     let s;
     if (k === 0) s = { x: x + 3, y: GROUND_Y - 15, w: 10, h: 15, kind: 'hydrant' };
-    else if (k === 1) { const h = lv < 2 ? 1 : ri(1, 2); s = { x, y: GROUND_Y - h * T, w: T, h: h * T, kind: 'crate' }; }
-    else if (k === 2) s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'pipe' };
-    else if (Math.random() < 0.5) s = { x, y: GROUND_Y - 3 * T, w: 2 * T, h: 3 * T, kind: 'pipe' };
-    else s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'crate' };
+    else if (k === 1) { const h = lv < 2 ? 1 : ri(1, 2); s = { x, y: GROUND_Y - h * T, w: T, h: h * T, kind: 'kibble' }; }
+    else if (k === 2) s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'doghouse' };
+    else if (Math.random() < 0.5) s = { x, y: GROUND_Y - 3 * T, w: 2 * T, h: 3 * T, kind: 'doghouse' };
+    else s = { x, y: GROUND_Y - 2 * T, w: 2 * T, h: 2 * T, kind: 'kibble' };
     solids.push(s);
     if (Math.random() < 0.45) bones.push({ x: s.x + s.w / 2 - 6, y: s.y - 34, taken: false });
   }
@@ -587,7 +595,7 @@
     [flatChunk, gapChunk, platformChunk, bridgeChunk][pick](lv, sp, reach, m, maxGap);
     if (genX >= nextFlag) {
       ground(4);
-      flags.push({ x: genX + 8, level: lv + 1, passed: false, drop: 0 });
+      flags.push({ x: genX + 8, level: lv + 1, passed: false, pop: 0 });
       genLevel++;
       ground(16);
       nextFlag = genX + LEVEL_LEN;
@@ -607,7 +615,7 @@
   let state = 'select', dogKey = store.get('dog', 'corgi'), best = store.get('best', 0);
   if (!BREEDS[dogKey]) dogKey = 'corgi';
   let level = 1, speed = BASE_SPEED, targetSpeed = BASE_SPEED, bonesGot = 0, levelBonus = 0;
-  let camX = 0, banner = null, deathKind = '', deathCause = '', deathTimer = 0, time = 0;
+  let camX = 0, banner = null, deathKind = '', deathCause = '', deathTimer = 0, deathY = 0, time = 0;
   let curTheme = 0, skyFrom = THEMES[0].sky, skyT = 1;
 
   function resetWorld() {
@@ -677,13 +685,13 @@
 
   function die(kind, cause) {
     state = 'dying'; deathKind = kind; deathCause = cause; deathTimer = 0;
-    if (kind === 'crash') { P.vy = -380; sfx.crash(); } else sfx.fall();
+    if (kind === 'crash') { P.vy = -220; deathY = P.y; sfx.crash(); } else sfx.fall();
   }
 
   const DEATH_TEXT = {
     hydrant: 'Bonked a fire hydrant.',
-    crate: 'Ran into a crate.',
-    pipe: 'Bumped into a green pipe.',
+    kibble: 'Tripped over a bag of kibble.',
+    doghouse: 'Ran headfirst into a doghouse.',
     ground: 'Smacked into a ledge.',
     hole: 'Fell down a hole.',
   };
@@ -710,7 +718,7 @@
     if (banner) banner.t -= dt;
     if (skyT < 1) skyT = Math.min(1, skyT + dt / 1.2);
     for (const p of popups) { p.t -= dt; p.y -= 20 * dt; }
-    for (const f of flags) if (f.passed && f.drop < 90) f.drop = Math.min(90, f.drop + 120 * dt);
+    for (const f of flags) if (f.passed) f.pop += dt;
 
     if (state === 'select') {
       camX += 40 * dt;
@@ -735,9 +743,12 @@
     }
     if (state === 'dying') {
       deathTimer += dt;
-      if (deathKind === 'crash' && deathTimer > 0.35) { P.vy += G * 0.8 * dt; P.y += P.vy * dt; }
+      if (deathKind === 'crash' && (P.vy !== 0 || P.y < deathY)) {
+        P.x -= 70 * dt; P.vy += G * dt; P.y += P.vy * dt;
+        if (P.y >= deathY) { P.y = deathY; P.vy = 0; }
+      }
       if (deathKind === 'fall') { P.vy = Math.min(P.vy + G * dt, 800); P.y += P.vy * dt; }
-      if (deathTimer > (deathKind === 'crash' ? 1.7 : 1.0)) gameOver();
+      if (deathTimer > (deathKind === 'crash' ? 1.6 : 1.0)) gameOver();
     }
   }
 
@@ -756,45 +767,53 @@
     if (s.kind === 'ground') {
       for (let tx = 0; tx < s.w; tx += T) {
         ctx.drawImage(tiles.top, x + tx, GROUND_Y);
-        ctx.drawImage(tiles.fill, x + tx, GROUND_Y + T);
+        ctx.drawImage(hash((s.x + tx) / T) > 0.85 ? tiles.paw : tiles.fill, x + tx, GROUND_Y + T);
       }
-    } else if (s.kind === 'brick') {
-      for (let tx = 0; tx < s.w; tx += T) ctx.drawImage(tiles.brick, x + tx, s.y);
-    } else if (s.kind === 'crate') {
-      for (let tx = 0; tx < s.w; tx += T) for (let ty = 0; ty < s.h; ty += T) ctx.drawImage(CRATE, x + tx, s.y + ty);
+    } else if (s.kind === 'biscuit') {
+      const y = s.y + 2, w = s.w;
+      rect(ctx, x + 1, y, w - 2, 12, '#8c5c2c');
+      rect(ctx, x, y + 1, w, 10, '#8c5c2c');
+      rect(ctx, x + 1, y + 1, w - 2, 10, '#d8a460');
+      rect(ctx, x + 2, y + 1, w - 4, 2, '#f4d49c');
+      rect(ctx, x + 1, y + 9, w - 2, 2, '#b07c40');
+      for (let dx = 6; dx < w - 4; dx += 8) rect(ctx, x + dx, y + 5 + ((dx >> 3) % 2), 2, 2, '#9c6c34');
+    } else if (s.kind === 'kibble') {
+      for (let tx = 0; tx < s.w; tx += T) for (let ty = 0; ty < s.h; ty += T) ctx.drawImage(KIBBLE, x + tx, s.y + ty);
     } else if (s.kind === 'hydrant') {
       ctx.drawImage(HYDRANT, x - 3, GROUND_Y - 16);
-    } else if (s.kind === 'pipe') {
-      const y = s.y;
-      rect(ctx, x, y + 12, s.w, s.h - 12, '#003c00');
-      rect(ctx, x + 2, y + 12, s.w - 4, s.h - 12, '#00a800');
-      rect(ctx, x + 5, y + 12, 3, s.h - 12, '#b8f818');
-      rect(ctx, x + 10, y + 12, 2, s.h - 12, '#58d854');
-      rect(ctx, x - 2, y, s.w + 4, 12, '#003c00');
-      rect(ctx, x, y + 1, s.w, 10, '#00a800');
-      rect(ctx, x + 3, y + 2, 3, 8, '#b8f818');
-      rect(ctx, x + 8, y + 2, 2, 8, '#58d854');
+    } else if (s.kind === 'doghouse') {
+      const y = s.y, w = s.w, h = s.h, roof = '#d6453a', roofDark = '#8c2420', wood = '#e8b46c', woodDark = '#9c6430';
+      rect(ctx, x + 2, y + 8, w - 4, h - 8, woodDark);
+      rect(ctx, x + 3, y + 8, w - 6, h - 8, wood);
+      for (let ly = y + 12; ly < y + h; ly += 5) rect(ctx, x + 3, ly, w - 6, 1, '#c8904c');
+      const dw = 12, dx = x + (w - dw) / 2, dh = Math.min(16, h - 14);
+      rect(ctx, dx, y + h - dh, dw, dh, '#2c1c14');
+      rect(ctx, dx + 1, y + h - dh - 1, dw - 2, 1, '#2c1c14');
+      rect(ctx, dx + 3, y + h - dh - 6, 6, 3, '#fcf4e0');
+      rect(ctx, x - 2, y + 4, w + 4, 5, roofDark);
+      rect(ctx, x, y, w, 5, roof);
+      rect(ctx, x + 1, y, w - 2, 1, '#f08068');
     }
   }
 
+  // Park signpost that marks the start of each level; it gives a happy hop when the dog passes.
   function drawFlag(f, cx) {
-    const x = Math.round(f.x - cx), top = GROUND_Y - 112;
-    rect(ctx, x, top, 2, 112, '#e8e8e8');
-    rect(ctx, x + 1, top, 1, 112, '#a8a8a8');
-    rect(ctx, x - 2, top - 6, 6, 6, '#3cbc3c');
-    rect(ctx, x - 1, top - 5, 2, 2, '#b8f818');
-    const fy = top + 4 + Math.round(f.drop);
-    for (let r = 0; r < 14; r++) {
-      const w = Math.round(18 * (1 - Math.abs(r - 6.5) / 7.5));
-      rect(ctx, x - w, fy + r, w, 1, '#f8b800');
-    }
-    // paw print
-    rect(ctx, x - 9, fy + 6, 4, 3, '#7c3c14');
-    rect(ctx, x - 10, fy + 4, 1, 1, '#7c3c14'); rect(ctx, x - 8, fy + 3, 1, 1, '#7c3c14');
-    rect(ctx, x - 6, fy + 3, 1, 1, '#7c3c14'); rect(ctx, x - 4, fy + 4, 1, 1, '#7c3c14');
-    rect(ctx, x - 7, GROUND_Y - 8, 16, 8, '#5c5c5c');
-    rect(ctx, x - 6, GROUND_Y - 7, 14, 1, '#a8a8a8');
-    if (!f.passed) text('L' + f.level, x + 6, top - 4, 'left');
+    const x = Math.round(f.x - cx), hop = f.passed && f.pop < 0.3 ? -Math.round(Math.sin((f.pop / 0.3) * Math.PI) * 6) : 0;
+    const top = GROUND_Y - 52 + hop;
+    rect(ctx, x - 2, top + 16, 4, GROUND_Y - top - 16, '#7c4c24');
+    rect(ctx, x - 1, top + 16, 1, GROUND_Y - top - 16, '#a87040');
+    const bw = 40, bx = x - bw / 2, board = f.passed ? '#f8b800' : '#e8b46c';
+    rect(ctx, bx, top, bw, 20, '#5c3418');
+    rect(ctx, bx + 1, top + 1, bw - 2, 18, board);
+    rect(ctx, bx + 1, top + 6, bw - 2, 1, mix(board, '#000000', 0.15));
+    rect(ctx, bx + 1, top + 13, bw - 2, 1, mix(board, '#000000', 0.15));
+    rect(ctx, bx + 5, top + 9, 4, 3, '#5c3418');
+    rect(ctx, bx + 4, top + 7, 1, 1, '#5c3418'); rect(ctx, bx + 6, top + 6, 1, 1, '#5c3418');
+    rect(ctx, bx + 8, top + 6, 1, 1, '#5c3418'); rect(ctx, bx + 10, top + 7, 1, 1, '#5c3418');
+    ctx.font = '8px "Press Start 2P", ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#5c3418';
+    ctx.fillText('L' + f.level, bx + 14, top + 6);
   }
 
   function drawBackground(cx) {
@@ -816,19 +835,21 @@
       ctx.drawImage(tiles.cloud, Math.round(i * 170 + hash(i) * 90 - cp), Math.round(20 + hash(i + 7) * 52));
     }
     const hp = Math.round(cx * 0.5) % 480;
-    for (let x = -hp; x < VW; x += 480) ctx.drawImage(tiles.hills, x, GROUND_Y - 72);
+    for (let x = -hp; x < VW; x += 480) ctx.drawImage(tiles.scenery, x, GROUND_Y - 80);
   }
 
   function drawPlayer(cx) {
     const frame = state === 'play' && P.onGround ? [0, 1, 2, 3][Math.floor(P.dist / 7) % 4] : 4;
     const sx = Math.round(P.x - cx - 7), sy = Math.round(P.y + P.h - 24);
     if (state === 'dying' && deathKind === 'crash') {
-      ctx.save();
-      ctx.translate(sx, sy + 24);
-      ctx.scale(1, -1);
-      ctx.drawImage(SPRITES[dogKey][4], 0, 0);
-      ctx.restore();
-      if (deathTimer < 0.8) text('YIP!', sx + 18, sy - 12, 'left', '#f8b800');
+      // Knocked back onto its haunches with dizzy stars circling its head.
+      ctx.drawImage(SPRITES[dogKey][P.vy === 0 ? 1 : 4], sx, sy);
+      for (let i = 0; i < 3; i++) {
+        const a = time * 6 + (i * Math.PI * 2) / 3;
+        const px = Math.round(sx + 22 + Math.cos(a) * 9), py = Math.round(sy + 2 + Math.sin(a) * 3);
+        rect(ctx, px, py - 1, 1, 3, '#f8d800'); rect(ctx, px - 1, py, 3, 1, '#f8d800');
+      }
+      if (deathTimer < 0.8) text('YIP!', sx + 20, sy - 14, 'left', '#f8b800');
     } else {
       ctx.drawImage(SPRITES[dogKey][frame], sx, sy);
     }
@@ -891,10 +912,10 @@
     o.start(t); o.stop(t + dur + 0.02);
   }
   const sfx = {
-    jump: () => tone(300, 640, 0.13),
-    bone: () => { tone(988, 0, 0.07, 'square', 0.05); tone(1319, 0, 0.16, 'square', 0.05, 0.07); },
-    level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0, 0.14, 'square', 0.06, i * 0.1)),
-    crash: () => tone(520, 90, 0.55, 'triangle', 0.14),
+    jump: () => tone(220, 480, 0.12, 'triangle', 0.12),
+    bone: () => { tone(1500, 2300, 0.05, 'sine', 0.09); tone(1700, 2600, 0.07, 'sine', 0.09, 0.08); },
+    level: () => { sfx.bark(BREEDS[dogKey].bark); [392, 523, 659].forEach((f, i) => tone(f, 0, 0.12, 'triangle', 0.1, 0.3 + i * 0.09)); },
+    crash: () => { tone(300, 120, 0.18, 'sawtooth', 0.06); tone(900, 600, 0.12, 'sine', 0.06, 0.2); tone(900, 600, 0.12, 'sine', 0.06, 0.36); },
     fall: () => tone(760, 70, 0.9, 'square', 0.05),
     bark: f => { tone(f, f * 0.55, 0.09, 'sawtooth', 0.05); tone(f * 0.9, f * 0.5, 0.11, 'sawtooth', 0.05, 0.14); },
   };
